@@ -1,5 +1,5 @@
 const express = require("express");
-const { MongoClient, ServerApiVersion } = require("mongodb");
+const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
 const app = express();
 require("dotenv").config();
 const port = process.env.PORT || 3000
@@ -32,9 +32,17 @@ async function run() {
     app.post('/books', async (req, res)=>{
       const book =req.body;
       book.createAT = new Date()
-      const result =await bookCollection.insertOne(query)
+      const result =await bookCollection.insertOne(book)
       res.send(result)
     })
+   app.get('/book-details/:id', async(req, res)=>{
+    const id =req.params.id;
+    const query ={
+      _id : new ObjectId(id)
+    }
+    const result =await bookCollection.findOne(query)
+    res.send(result)
+   })
    app.get("/latest_books", async (req, res) => {
      const result = await bookCollection
        .find()
