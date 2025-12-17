@@ -35,6 +35,12 @@ async function run() {
       const result =await bookCollection.insertOne(book)
       res.send(result)
     })
+    // get all books
+     app.get('/books', async(req, res)=>{
+      const result =await bookCollection.find().toArray()
+      res.send(result)
+     })
+    // get details book
    app.get('/book-details/:id', async(req, res)=>{
     const id =req.params.id;
     const query ={
@@ -43,6 +49,7 @@ async function run() {
     const result =await bookCollection.findOne(query)
     res.send(result)
    })
+  //  latest book
    app.get("/latest_books", async (req, res) => {
      const result = await bookCollection
        .find()
