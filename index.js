@@ -26,7 +26,16 @@ async function run() {
     await client.connect();
 
     const database =client.db('book_courier')
-    const bookCollection =database.collection('books')
+    const bookCollection =database.collection('books');
+    const orderCollection =database.collection('orders')
+    const userCollection =database.collection('users')
+    // user api
+    app.post ('/users', async(req, res)=>{
+      const users =req.body;
+      users.role ="user";
+      const result =await userCollection.insertOne(users)
+      res.send(result)
+    })
 
     // books api
     app.post('/books', async (req, res)=>{
@@ -60,6 +69,14 @@ async function run() {
      res.send(result);
    });
 
+
+  //  orders api
+
+   app.post('/orders',async(req, res)=>{
+    const orders =req.body;
+    const result =await orderCollection.insertOne(orders)
+    res.send(result)
+   })
     // Send a ping to confirm a successful connection
     await client.db("admin").command({ ping: 1 });
     console.log(
