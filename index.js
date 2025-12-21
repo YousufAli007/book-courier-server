@@ -33,6 +33,12 @@ async function run() {
     app.post ('/users', async(req, res)=>{
       const users =req.body;
       users.role ="user";
+      users.createAT =new Date()
+      const email =users.email;
+      const userExists =await userCollection.findOne({email});
+      if(userExists){
+        return res.send({message:'user Exists'})
+      }
       const result =await userCollection.insertOne(users)
       res.send(result)
     })
@@ -73,8 +79,10 @@ async function run() {
   //  orders api
 
    app.post('/orders',async(req, res)=>{
-    const orders =req.body;
-    const result =await orderCollection.insertOne(orders)
+    const ordersInfo =req.body;
+    ordersInfo.createAT =new Date();
+    ordersInfo.paymentStatus='pending';
+    const result =await orderCollection.insertOne(ordersInfo)
     res.send(result)
    })
     // Send a ping to confirm a successful connection
