@@ -9,6 +9,33 @@ const e = require("express");
 app.use(express.json())
 app.use(cors())
 
+const admin = require("firebase-admin");
+
+const serviceAccount = require("./book-courier-firebase-admin.json");
+
+admin.initializeApp({
+  credential: admin.credential.cert(serviceAccount),
+});
+const verifyFBToken = async(req,res, next)=>{
+ 
+  const token =req.headers.authorization;
+  if(!token){
+    return res.status(401).send({message: 'unauthorized access'})
+  }
+  try{
+    const idToken =token.split(' ')[1];
+    const decoded = await admin.auth().verifyIdToken(idToken)
+    // console.log('decoded in the token',decoded )
+    req.decoded_email =decoded.email
+     next();
+  }
+  catch(erro){
+    return res.status(401).send({message: 'unauthorized access'})
+  }
+ 
+}
+
+
 
 const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASSWORD}@cluster0.cydeyqc.mongodb.net/?appName=Cluster0`;
 
@@ -78,11 +105,14 @@ async function run() {
 
 
   //  orders api
-   app.get('/orders', async(req, res)=>{
+   app.get('/orders',verifyFBToken, async(req, res)=>{
     const query ={}
     const {email}=req.query;
     if(email){
       query.buyerEmail =email;
+      if(email !== req.decoded_email){
+        return res.status(403).send({message:'forbidden access'})
+      }
     }
     const option = { sort: { createAT:-1} };
     const cursor =orderCollection.find(query,option)
@@ -96,6 +126,12 @@ async function run() {
     ordersInfo.paymentStatus='pending';
     const result =await orderCollection.insertOne(ordersInfo)
     res.send(result)
+   })
+   app.delete('/order/:id', async(req, res)=>{
+      const id =req.params.id;
+      const query ={ _id: new ObjectId(id)}
+      const result =await orderCollection.deleteOne(query)
+      res.send(result)
    })
     // Send a ping to confirm a successful connection
     await client.db("admin").command({ ping: 1 });
