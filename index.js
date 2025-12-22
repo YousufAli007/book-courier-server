@@ -99,6 +99,19 @@ async function run() {
     const result =await bookCollection.findOne(query)
     res.send(result)
    })
+  //  update book Staus 
+  app.patch("/books/status/:id", async (req, res) => {
+    const id = req.params.id;
+    const { status } = req.body;
+
+    const result = await bookCollection.updateOne(
+      { _id: new ObjectId(id) },
+      { $set: { status } }
+    );
+
+    res.send(result);
+  });
+
   //  latest book
    app.get("/latest_books", async (req, res) => {
      const result = await bookCollection
