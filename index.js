@@ -111,6 +111,37 @@ async function run() {
 
     res.send(result);
   });
+  app.get("/books/:id", async (req, res) => {
+    const id = req.params.id;
+
+    const result = await bookCollection.findOne({
+      _id: new ObjectId(id),
+    });
+
+    res.send(result);
+  });
+
+  app.put("/books/:id", async (req, res) => {
+    const id = req.params.id;
+    const updatedBook = req.body;
+
+    const result = await bookCollection.updateOne(
+      { _id: new ObjectId(id) },
+      {
+        $set: {
+          bookName: updatedBook.bookName,
+          bookImageUrl: updatedBook.bookImageUrl,
+          author: updatedBook.author,
+          price: updatedBook.price,
+          status: updatedBook.status,
+          updatedAt: new Date(),
+        },
+      }
+    );
+
+    res.send(result);
+  });
+
 
   //  latest book
    app.get("/latest_books", async (req, res) => {
