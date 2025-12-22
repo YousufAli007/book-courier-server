@@ -79,10 +79,17 @@ async function run() {
       res.send(result)
     })
     // get all books
-     app.get('/books', async(req, res)=>{
-      const result =await bookCollection.find().toArray()
-      res.send(result)
-     })
+   app.get("/books", async (req, res) => {
+   const { email } = req.query;
+   const query = {};
+
+   if (email) {
+     query.sellerEmail = email;
+   }
+
+   const result = await bookCollection.find(query).toArray();
+   res.send(result);
+   });
     // get details book
    app.get('/book-details/:id', async(req, res)=>{
     const id =req.params.id;
