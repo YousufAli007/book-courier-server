@@ -72,9 +72,14 @@ async function run() {
     });
     // get all users
     app.get("/users", verifyFBToken, async (req, res) => {
-      const result = await userCollection.find().toArray();
+      const { email } = req.query; 
+
+      const query = email ? { email } : {}; 
+
+      const result = await userCollection.find(query).toArray();
       res.send(result);
     });
+
     app.patch("/users/admin/:id", verifyFBToken, async (req, res) => {
       const id = req.params.id;
 
