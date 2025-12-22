@@ -53,137 +53,197 @@ async function run() {
     // Connect the client to the server	(optional starting in v4.7)
     await client.connect();
 
-    const database =client.db('book_courier')
-    const bookCollection =database.collection('books');
-    const orderCollection =database.collection('orders')
-    const userCollection =database.collection('users')
+    const database = client.db("book_courier");
+    const bookCollection = database.collection("books");
+    const orderCollection = database.collection("orders");
+    const userCollection = database.collection("users");
     // user api
-    app.post ('/users', async(req, res)=>{
-      const users =req.body;
-      users.role ="user";
-      users.createAT =new Date()
-      const email =users.email;
-      const userExists =await userCollection.findOne({email});
-      if(userExists){
-        return res.send({message:'user Exists'})
+    app.post("/users", async (req, res) => {
+      const users = req.body;
+      users.role = "user";
+      users.createAT = new Date();
+      const email = users.email;
+      const userExists = await userCollection.findOne({ email });
+      if (userExists) {
+        return res.send({ message: "user Exists" });
       }
-      const result =await userCollection.insertOne(users)
-      res.send(result)
-    })
+      const result = await userCollection.insertOne(users);
+      res.send(result);
+    });
+    // get all users
+    app.get("/users", verifyFBToken, async (req, res) => {
+      const result = await userCollection.find().toArray();
+      res.send(result);
+    });
+    app.patch("/users/admin/:id", verifyFBToken, async (req, res) => {
+      const id = req.params.id;
 
-    // books api
-    app.post('/books', async (req, res)=>{
-      const book =req.body;
-      book.createAT = new Date()
-      const result =await bookCollection.insertOne(book)
-      res.send(result)
-    })
-    // get all books
-   app.get("/books", async (req, res) => {
-   const { email } = req.query;
-   const query = {};
+      const result = await userCollection.updateOne(
+        { _id: new ObjectId(id) },
+        { $set: { role: "admin" } }
+      );
 
-   if (email) {
-     query.sellerEmail = email;
-   }
+      res.send(result);
+    });
+    app.patch("/users/librarian/:id", verifyFBToken, async (req, res) => {
+      const id = req.params.id;
 
-   const result = await bookCollection.find(query).toArray();
-   res.send(result);
-   });
-    // get details book
-   app.get('/book-details/:id', async(req, res)=>{
-    const id =req.params.id;
-    const query ={
-      _id : new ObjectId(id)
-    }
-    const result =await bookCollection.findOne(query)
-    res.send(result)
-   })
-  //  update book Staus 
-  app.patch("/books/status/:id", async (req, res) => {
-    const id = req.params.id;
-    const { status } = req.body;
+      const result = await userCollection.updateOne(
+        { _id: new ObjectId(id) },
+        { $set: { role: "librarian" } }
+      );
 
-    const result = await bookCollection.updateOne(
-      { _id: new ObjectId(id) },
-      { $set: { status } }
-    );
-
-    res.send(result);
-  });
-  app.get("/books/:id", async (req, res) => {
-    const id = req.params.id;
-
-    const result = await bookCollection.findOne({
-      _id: new ObjectId(id),
+      res.send(result);
     });
 
-    res.send(result);
-  });
+    // books api
+    app.post("/books", async (req, res) => {
+      const book = req.body;
+      book.createAT = new Date();
+      const result = await bookCollection.insertOne(book);
+      res.send(result);
+    });
+    // get all books
+    app.get("/books", async (req, res) => {
+      const { email } = req.query;
+      const query = {};
 
-  app.put("/books/:id", async (req, res) => {
-    const id = req.params.id;
-    const updatedBook = req.body;
-
-    const result = await bookCollection.updateOne(
-      { _id: new ObjectId(id) },
-      {
-        $set: {
-          bookName: updatedBook.bookName,
-          bookImageUrl: updatedBook.bookImageUrl,
-          author: updatedBook.author,
-          price: updatedBook.price,
-          status: updatedBook.status,
-          updatedAt: new Date(),
-        },
+      if (email) {
+        query.sellerEmail = email;
       }
-    );
 
-    res.send(result);
-  });
+      const result = await bookCollection.find(query).toArray();
+      res.send(result);
+    });
+    // get details book
+    app.get("/book-details/:id", async (req, res) => {
+      const id = req.params.id;
+      const query = {
+        _id: new ObjectId(id),
+      };
+      const result = await bookCollection.findOne(query);
+      res.send(result);
+    });
+    //  update book Staus
+    app.patch("/books/status/:id", async (req, res) => {
+      const id = req.params.id;
+      const { status } = req.body;
 
+      const result = await bookCollection.updateOne(
+        { _id: new ObjectId(id) },
+        { $set: { status } }
+      );
 
-  //  latest book
-   app.get("/latest_books", async (req, res) => {
-     const result = await bookCollection
-       .find()
-       .sort({ createdAt: -1 })
-       .limit(6)
-       .toArray();
+      res.send(result);
+    });
+    app.get("/books/:id", async (req, res) => {
+      const id = req.params.id;
 
-     res.send(result);
-   });
+      const result = await bookCollection.findOne({
+        _id: new ObjectId(id),
+      });
 
+      res.send(result);
+    });
 
-  //  orders api
-   app.get('/orders',verifyFBToken, async(req, res)=>{
-    const query ={}
-    const {email}=req.query;
-    if(email){
-      query.buyerEmail =email;
-      if(email !== req.decoded_email){
-        return res.status(403).send({message:'forbidden access'})
+    app.put("/books/:id", async (req, res) => {
+      const id = req.params.id;
+      const updatedBook = req.body;
+
+      const result = await bookCollection.updateOne(
+        { _id: new ObjectId(id) },
+        {
+          $set: {
+            bookName: updatedBook.bookName,
+            bookImageUrl: updatedBook.bookImageUrl,
+            author: updatedBook.author,
+            price: updatedBook.price,
+            status: updatedBook.status,
+            updatedAt: new Date(),
+          },
+        }
+      );
+
+      res.send(result);
+    });
+
+    //  latest book
+    app.get("/latest_books", async (req, res) => {
+      const result = await bookCollection
+        .find()
+        .sort({ createdAt: -1 })
+        .limit(6)
+        .toArray();
+
+      res.send(result);
+    });
+
+    //  orders api
+    app.get("/orders", verifyFBToken, async (req, res) => {
+      const query = {};
+      const { email } = req.query;
+      if (email) {
+        query.buyerEmail = email;
+        if (email !== req.decoded_email) {
+          return res.status(403).send({ message: "forbidden access" });
+        }
       }
-    }
-    const option = { sort: { createAT:-1} };
-    const cursor =orderCollection.find(query,option)
-    const result =await cursor.toArray()
-    res.send(result)
-   })
+      const option = { sort: { createAT: -1 } };
+      const cursor = orderCollection.find(query, option);
+      const result = await cursor.toArray();
+      res.send(result);
+    });
 
-   app.post('/orders',async(req, res)=>{
-    const ordersInfo =req.body;
-    ordersInfo.createAT =new Date();
-    ordersInfo.paymentStatus='pending';
-    const result =await orderCollection.insertOne(ordersInfo)
-    res.send(result)
-   })
-   app.delete('/order/:id', async(req, res)=>{
-      const id =req.params.id;
-      const query ={ _id: new ObjectId(id)}
-      const result =await orderCollection.deleteOne(query)
-      res.send(result)
-   })
+    app.post("/orders", verifyFBToken, async (req, res) => {
+      const order = req.body;
+
+      order.createAT = new Date();
+      order.paymentStatus = "pending";
+      order.status = "pending";
+
+      const result = await orderCollection.insertOne(order);
+      res.send(result);
+    });
+    app.patch("/orders/status/:id", verifyFBToken, async (req, res) => {
+      const { status } = req.body;
+
+      const result = await orderCollection.updateOne(
+        { _id: new ObjectId(req.params.id) },
+        { $set: { status } }
+      );
+
+      res.send(result);
+    });
+    app.patch("/orders/cancel/:id", verifyFBToken, async (req, res) => {
+      const result = await orderCollection.updateOne(
+        { _id: new ObjectId(req.params.id) },
+        { $set: { status: "cancelled" } }
+      );
+
+      res.send(result);
+    });
+
+    app.delete("/order/:id", async (req, res) => {
+      const id = req.params.id;
+      const query = { _id: new ObjectId(id) };
+      const result = await orderCollection.deleteOne(query);
+      res.send(result);
+    });
+    app.get("/seller-orders", verifyFBToken, async (req, res) => {
+      const { email } = req.query;
+
+      if (email !== req.decoded_email) {
+        return res.status(403).send({ message: "forbidden" });
+      }
+
+      const result = await orderCollection
+        .find({ sellerEmail: email })
+        .sort({ createAT: -1 })
+        .toArray();
+
+      res.send(result);
+    });
+
     // Send a ping to confirm a successful connection
     await client.db("admin").command({ ping: 1 });
     console.log(
