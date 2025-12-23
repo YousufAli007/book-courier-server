@@ -11,7 +11,12 @@ app.use(cors())
 
 const admin = require("firebase-admin");
 
-const serviceAccount = require("./book-courier-firebase-admin.json");
+// index.js
+const decoded = Buffer.from(
+  process.env.FIREBASE_SERVICE_KEY,
+  "base64"
+).toString("utf8");
+const serviceAccount = JSON.parse(decoded);
 
 admin.initializeApp({
   credential: admin.credential.cert(serviceAccount),
@@ -51,12 +56,24 @@ const client = new MongoClient(uri, {
 async function run() {
   try {
     // Connect the client to the server	(optional starting in v4.7)
-    await client.connect();
+    // await client.connect();
 
     const database = client.db("book_courier");
     const bookCollection = database.collection("books");
     const orderCollection = database.collection("orders");
     const userCollection = database.collection("users");
+    const serviceCollction = database.collection("service");
+    // service center
+    app.post("/service", async (req, res) => {
+      const query = req.body;
+      const result = await serviceCollction.insertOne(query);
+      res.send(result);
+    });
+    app.get("/service", async (req, res) => {
+      const result = await serviceCollction.find().toArray();
+      res.send(result);
+    });
+
     // user api
     app.post("/users", async (req, res) => {
       const users = req.body;
@@ -72,9 +89,9 @@ async function run() {
     });
     // get all users
     app.get("/users", verifyFBToken, async (req, res) => {
-      const { email } = req.query; 
+      const { email } = req.query;
 
-      const query = email ? { email } : {}; 
+      const query = email ? { email } : {};
 
       const result = await userCollection.find(query).toArray();
       res.send(result);
@@ -171,12 +188,40 @@ async function run() {
 
       res.send(result);
     });
+    // MANGAE BOOK
+    // DELETE all orders by bookId
+    app.delete("/orders-by-book/:bookId", async (req, res) => {
+      const { bookId } = req.params;
+      try {
+        const result = await orderCollection.deleteMany({ bookId: bookId });
+        res.send({ deletedCount: result.deletedCount });
+      } catch (error) {
+        console.error(error);
+        res
+          .status(500)
+          .send({ message: "Failed to delete orders for this book" });
+      }
+    });
+
+    // DELETE a book by id
+    app.delete("/books/:id", async (req, res) => {
+      const id = req.params.id;
+      try {
+        const result = await bookCollection.deleteOne({
+          _id: new ObjectId(id),
+        });
+        res.send(result);
+      } catch (error) {
+        console.error(error);
+        res.status(500).send({ message: "Failed to delete the book" });
+      }
+    });
 
     //  latest book
     app.get("/latest_books", async (req, res) => {
       const result = await bookCollection
         .find()
-        .sort({ createdAt: -1 })
+        .sort({ createAT: -1 })
         .limit(6)
         .toArray();
 
@@ -250,7 +295,7 @@ async function run() {
     });
 
     // Send a ping to confirm a successful connection
-    await client.db("admin").command({ ping: 1 });
+    // await client.db("admin").command({ ping: 1 });
     console.log(
       "Pinged your deployment. You successfully connected to MongoDB!"
     );
