@@ -62,15 +62,44 @@ async function run() {
     const bookCollection = database.collection("books");
     const orderCollection = database.collection("orders");
     const userCollection = database.collection("users");
-    const serviceCollction = database.collection("service");
+    const serviceCollection = database.collection("service");
+    const wishlistCollection = database.collection("wishlist");
+
+    // add wishlist
+    app.post("/wishlist", async (req, res) => {
+      try {
+        const item = req.body;
+
+        // 🔍 check same bookId already exists
+        const exists = await wishlistCollection.findOne({
+          bookId: item.bookId,
+          // buyerEmail: item.buyerEmail
+        });
+
+        if (exists) {
+          return res.send({ message: "Already added to wishlist" });
+        }
+
+        const result = await wishlistCollection.insertOne(item);
+        res.send(result);
+      } catch (error) {
+        res.status(500).send({ message: "Failed to add wishlist" });
+      }
+    });
+
+    app.get("/wishlist", async(req, res)=>{
+      const result =await wishlistCollection.find().toArray()
+      res.send(result)
+    });
+
     // service center
     app.post("/service", async (req, res) => {
       const query = req.body;
-      const result = await serviceCollction.insertOne(query);
+      const result = await serviceCollection.insertOne(query);
       res.send(result);
     });
     app.get("/service", async (req, res) => {
-      const result = await serviceCollction.find().toArray();
+      const result = await serviceCollection.find().toArray();
       res.send(result);
     });
 
