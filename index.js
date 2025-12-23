@@ -64,6 +64,35 @@ async function run() {
     const userCollection = database.collection("users");
     const serviceCollection = database.collection("service");
     const wishlistCollection = database.collection("wishlist");
+     const reviewRatinCollecton = database.collection("review_rating");
+    // POST review
+    app.post("/review-rating", async (req, res) => {
+      try {
+        const reviewData = req.body;
+        reviewData.createdAt = new Date();
+        const result = await reviewRatinCollecton.insertOne(reviewData);
+        res.send({ insertedId: result.insertedId });
+      } catch (error) {
+        console.error(error);
+        res.status(500).send({ message: "Failed to add review" });
+      }
+    });
+
+    // GET reviews (latest 3) for a book
+    app.get("/review-rating/:bookId", async (req, res) => {
+      try {
+        const { bookId } = req.params;
+        const reviews = await reviewRatinCollecton
+          .find({ bookId })
+          .sort({ createdAt: -1 })
+          .limit(3)
+          .toArray();
+        res.send(reviews);
+      } catch (error) {
+        console.error(error);
+        res.status(500).send({ message: "Failed to fetch reviews" });
+      }
+    });
 
     // add wishlist
     app.post("/wishlist", async (req, res) => {
@@ -87,9 +116,9 @@ async function run() {
       }
     });
 
-    app.get("/wishlist", async(req, res)=>{
-      const result =await wishlistCollection.find().toArray()
-      res.send(result)
+    app.get("/wishlist", async (req, res) => {
+      const result = await wishlistCollection.find().toArray();
+      res.send(result);
     });
 
     // service center
