@@ -5,6 +5,7 @@ require("dotenv").config();
 const port = process.env.PORT || 3000
 const cors =require('cors');
 const e = require("express");
+const stripe = require("stripe")(process.env.STRIPE_SECRET);
 // middleware
 app.use(express.json())
 app.use(cors())
@@ -65,6 +66,100 @@ async function run() {
     const serviceCollection = database.collection("service");
     const wishlistCollection = database.collection("wishlist");
      const reviewRatinCollecton = database.collection("review_rating");
+     const paymentCollection =database.collection('payments')
+    //  
+    app.get("/payments", async (req, res) => {
+      const email = req.query.email;
+
+      let query = {};
+      if (email) {
+        query = { email: email };
+      }
+
+      const result = await paymentCollection.find(query).toArray();
+      res.send(result);
+    });
+
+    //  payment relate api
+    app.post("/create-checkout-session", async (req, res) => {
+      try {
+        const paymentInfo = req.body;
+        const amount = parseInt(paymentInfo.cost) * 100;
+
+        const session = await stripe.checkout.sessions.create({
+          line_items: [
+            {
+              price_data: {
+                currency: "usd",
+                unit_amount: amount,
+                product_data: {
+                  name: paymentInfo.bookName,
+                },
+              },
+              quantity: 1,
+            },
+          ],
+          mode: "payment",
+          metadata: {
+            parcelId: paymentInfo.parcelId,
+            email: paymentInfo.email,
+          },
+          success_url: `${process.env.SITE_DOMAIN}/dashboard/payment-success?session_id={CHECKOUT_SESSION_ID}`,
+          cancel_url: `${process.env.SITE_DOMAIN}/dashboard/payment-cancel`,
+        });
+
+        res.send({ url: session.url });
+      } catch (error) {
+        console.error(error);
+        res.status(400).send({ error: error.message });
+      }
+    });
+    app.patch('/payment-succes', async(req, res)=>{
+      const sessionId =req.query.session_id;
+       const session = await stripe.checkout.sessions.retrieve(sessionId)
+       console.log('session retrieve',session)
+        const transactonId = session.payment_intent;
+        const query = { transactonId: transactonId };
+        const paymentExist = await paymentCollection.findOne(query);
+      if (paymentExist) {
+        return res.send({ message: "already existst" });
+      }
+
+       if (session.payment_status === 'paid'){
+        const id = session.metadata.parcelId;
+        const query ={_id:new ObjectId(id)}
+        const update = {
+          $set: {
+            paymentStatus:'paid',
+
+          },
+        };
+        const result =await orderCollection.updateOne(query,update)
+
+        const payment = {
+          amount: session.amount_total / 100,
+          parcelId: session.metadata.parcelId,
+          transactionId: session.payment_intent,
+          paymentStatus: session.payment_status,
+          email:session.metadata.email,
+          createAT: new Date(),
+        };
+        if (session.payment_status === "paid") {
+          const resultPayment = await paymentCollection.insertOne(payment);
+          res.send({
+            success: true,
+            modifyParcel: result,
+            paymentInfo: resultPayment,
+          });
+        }
+      
+       } 
+       
+         res.send({ success: false });
+      
+    })
+
+    //  review api
      app.post('/review', async(req, res)=>{
       const review =req.body;
       review.createAT = new Date()
@@ -339,6 +434,13 @@ async function run() {
 
       res.send(result);
     });
+
+    app.get('/order/:id',async (req,res)=>{
+      const id =req.params.id;
+      const query ={_id: new ObjectId(id)}
+      const result =await orderCollection.findOne(query)
+      res.send(result)
+    })
 
     // Send a ping to confirm a successful connection
     // await client.db("admin").command({ ping: 1 });
